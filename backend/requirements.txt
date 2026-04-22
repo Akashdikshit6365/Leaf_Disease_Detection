@@ -1,0 +1,27 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+pydantic==2.7.1
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+
+# AI / vision
+torch==2.3.0
+torchvision==0.18.0
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+Pillow==10.3.0
+
+# Firebase
+firebase-admin==6.5.0
+
+# MySQL
+mysql-connector-python==8.4.0
+SQLAlchemy==2.0.30
+
+# LLM
+groq==0.9.0
+google-generativeai==0.8.6
+
+# Utility
+requests==2.32.2

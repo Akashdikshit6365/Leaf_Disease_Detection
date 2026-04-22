@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.env.local
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets / artifacts
+firebase-credentials.json
+backend/ml_model/weights.pth
+backend/weights.pth
+weights (1).pth
+*.log
+*.err
+uploads/
+backend/uploads/
