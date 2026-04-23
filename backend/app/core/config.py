@@ -1,6 +1,7 @@
 """Centralised settings loaded from environment variables."""
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote, unquote, urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,12 +28,13 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.1-8b-instant"         # text-only: treatment advice
     groq_vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"  # vision: image diagnosis
 
-    # Firebase
-    firebase_credentials_json: str = "./firebase-credentials.json"
-    firebase_storage_bucket: str = ""
-
-    # Local storage fallback
-    local_uploads_dir: str = str(BACKEND_DIR / "uploads")
+    # Cloudinary
+    cloudinary_url: str = ""
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+    cloudinary_image_folder: str = "LeafAI/images"
+    cloudinary_heatmap_folder: str = "LeafAI/heatmaps"
 
     # MySQL
     mysql_host: str = "127.0.0.1"
@@ -61,6 +63,37 @@ class Settings(BaseSettings):
         return (
             f"mysql+mysqlconnector://{self.mysql_user}:{self.mysql_password}"
             f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
+        )
+
+    @property
+    def cloudinary_url_resolved(self) -> str:
+        if self.cloudinary_url:
+            return self.cloudinary_url
+        if not (self.cloudinary_cloud_name and self.cloudinary_api_key and self.cloudinary_api_secret):
+            return ""
+        secret = quote(self.cloudinary_api_secret, safe="")
+        return (
+            f"cloudinary://{self.cloudinary_api_key}:{secret}"
+            f"@{self.cloudinary_cloud_name}"
+        )
+
+    @property
+    def cloudinary_credentials(self) -> tuple[str, str, str]:
+        if self.cloudinary_cloud_name and self.cloudinary_api_key and self.cloudinary_api_secret:
+            return (
+                self.cloudinary_cloud_name,
+                self.cloudinary_api_key,
+                self.cloudinary_api_secret,
+            )
+
+        if not self.cloudinary_url:
+            return ("", "", "")
+
+        parsed = urlparse(self.cloudinary_url)
+        return (
+            parsed.hostname or "",
+            unquote(parsed.username or ""),
+            unquote(parsed.password or ""),
         )
 
     @property

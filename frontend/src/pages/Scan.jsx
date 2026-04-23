@@ -4,7 +4,7 @@ import ImageUpload from '../components/ImageUpload.jsx'
 import CameraCapture from '../components/CameraCapture.jsx'
 import Loader from '../components/Loader.jsx'
 import FeatureIcon from '../components/FeatureIcon.jsx'
-import { diagnoseImage } from '../api/client.js'
+import { predictImage } from '../api/client.js'
 
 const CAPTURE_TIPS = [
   { label: 'Single leaf focus', value: 'Best results when one leaf fills most of the frame.' },
@@ -90,15 +90,8 @@ export default function Scan() {
     }, 80)
     
     try {
-      const result = await diagnoseImage(file)
+      const result = await predictImage(file)
       setScanProgress(100)
-      
-      if (result?.source === 'none') {
-        setError(result.error || 'Not a plant leaf')
-        setBusy(false)
-        setScanProgress(0)
-        return
-      }
 
       setTimeout(() => {
         setResult({

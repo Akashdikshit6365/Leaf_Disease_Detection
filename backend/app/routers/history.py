@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.prediction import PredictionRecord
-from app.services import db_service, local_storage_service
+from app.services import cloudinary_service, db_service
 
 
 router = APIRouter()
@@ -36,6 +36,6 @@ def delete_one(pred_id: int, db: Session = Depends(get_db)) -> Response:
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Prediction not found")
 
-    local_storage_service.delete_public_url(row.image_url)
-    local_storage_service.delete_public_url(row.heatmap_url)
+    cloudinary_service.delete_public_url(row.image_url)
+    cloudinary_service.delete_public_url(row.heatmap_url)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

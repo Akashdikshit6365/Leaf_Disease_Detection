@@ -5,13 +5,13 @@ import io
 import json
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.config import settings
 from app.schemas.prediction import PredictionResponse
-from app.services import db_service, firebase_service, groq_service, local_storage_service
+from app.services import cloudinary_service, db_service, groq_service
 from app.services.heatmap_service import generate_heatmap
 from app.services.image_quality_service import assess_image
 from app.services.model_service import model_service
@@ -27,7 +27,6 @@ MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/predict", response_model=PredictionResponse, status_code=status.HTTP_201_CREATED)
 async def predict(
-    request: Request,
     file: UploadFile = File(..., description="Leaf image (JPG / PNG / WEBP, <=10 MB)"),
     db: Session = Depends(get_db),
 ) -> PredictionResponse:
@@ -80,13 +79,8 @@ async def predict(
 
     # ---------- upload ----------
     try:
-        base_url = str(request.base_url)
-        image_url = local_storage_service.save_bytes(original_png, folder="images", base_url=base_url)
-        heatmap_url = local_storage_service.save_bytes(heatmap_png, folder="heatmaps", base_url=base_url)
-
-        # Firebase path kept commented for easy restore after billing verification.
-        # image_url = firebase_service.upload_bytes(original_png, folder="images")
-        # heatmap_url = firebase_service.upload_bytes(heatmap_png, folder="heatmaps")
+        image_url = cloudinary_service.upload_bytes(original_png, folder="images")
+        heatmap_url = cloudinary_service.upload_bytes(heatmap_png, folder="heatmaps")
     except Exception as exc:
         logger.exception("Storage upload failed")
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Storage upload failed: {exc}") from exc

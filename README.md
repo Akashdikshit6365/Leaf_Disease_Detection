@@ -25,7 +25,7 @@
 | AI       | PyTorch · Torchvision (EfficientNet-B0) · OpenCV · custom Grad-CAM |
 | LLM      | Groq API (`llama3-8b-8192`) |
 | Database | MySQL 8 |
-| Storage  | Firebase Cloud Storage (images + heatmaps) |
+| Storage  | Cloudinary (images + heatmaps) |
 
 ---
 
@@ -34,7 +34,7 @@
 ```
 React (Vite, Tailwind) ──► FastAPI ──► PyTorch CNN + Grad-CAM
                               │
-                              ├──► Firebase Storage   (images + heatmaps)
+                              ├──► Cloudinary         (images + heatmaps)
                               ├──► MySQL              (prediction history)
                               └──► Groq API           (explanations + chat)
 ```
@@ -75,7 +75,7 @@ Akash_App/
 
 - Python 3.10+ · Node 18+ · MySQL 8
 - A Groq API key → <https://console.groq.com>
-- A Firebase project with Cloud Storage + a service-account JSON
+- A Cloudinary account for image hosting
 
 ### 2 — Database
 
@@ -116,8 +116,9 @@ All secrets live in `backend/.env`. See [.env.example](.env.example) — require
 ```env
 GROQ_API_KEY=...
 GROQ_MODEL=llama3-8b-8192
-FIREBASE_CREDENTIALS_JSON=./firebase-credentials.json
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+CLOUDINARY_IMAGE_FOLDER=LeafAI/images
+CLOUDINARY_HEATMAP_FOLDER=LeafAI/heatmaps
 MYSQL_HOST=...
 MYSQL_USER=...
 MYSQL_PASSWORD=...
@@ -170,15 +171,15 @@ Theme: black / dark gray + neon-green accent · glassmorphism cards · animated 
 
 ---
 
-## ☁️ Firebase Integration
+## ☁️ Cloudinary Integration
 
-The Admin SDK initialises lazily on first upload. Each scan writes two objects:
+The backend uploads both prediction assets to Cloudinary and stores the returned
+secure URLs in MySQL:
 
-- `images/<uuid>.png`    — normalised original
-- `heatmaps/<uuid>.png`  — Grad-CAM overlay
+- `LeafAI/images/...`    — normalised original
+- `LeafAI/heatmaps/...`  — Grad-CAM overlay
 
-Blobs are returned as public URLs. Swap to signed URLs in
-[firebase_service.py](backend/app/services/firebase_service.py) if privacy is required.
+Deleting a history item also deletes those Cloudinary assets from the account.
 
 ---
 
@@ -206,4 +207,4 @@ Proprietary — adapt for your farm, your lab, your product. Not yet OSS-license
 
 ---
 
-Built with FastAPI · PyTorch · React · Tailwind · Firebase · MySQL · Groq.
+Built with FastAPI · PyTorch · React · Tailwind · Cloudinary · MySQL · Groq.

@@ -12,8 +12,8 @@ opencv-python-headless==4.9.0.80
 numpy==1.26.4
 Pillow==10.3.0
 
-# Firebase
-firebase-admin==6.5.0
+# Cloudinary
+cloudinary==1.41.0
 
 # MySQL
 mysql-connector-python==8.4.0
