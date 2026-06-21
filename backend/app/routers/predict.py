@@ -105,8 +105,8 @@ async def predict(
         json.dumps(
             {
                 "event": "prediction.completed",
-                "model_name": model_service.metadata.model_name,
-                "model_version": model_service.metadata.model_version,
+                "model_name": settings.gemini_vision_model,
+                "model_version": settings.gemini_vision_model,
                 "timestamp": record["created_at"].isoformat(),
                 "filename": file.filename,
                 "content_type": file.content_type,

@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: leafai-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: APP_ENV
+        value: production
+      - key: SKIP_MODEL_WARMUP
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: leafai
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 10080
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: GROQ_VISION_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_VISION_MODEL
+        value: gemini-3.1-flash-lite
