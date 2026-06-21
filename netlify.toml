@@ -1,0 +1,13 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  VITE_API_BASE_URL = "https://leaf-disease-detection-z11t.onrender.com/api"
+  VITE_MOBILE_API_BASE_URL = "https://leaf-disease-detection-z11t.onrender.com/api"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

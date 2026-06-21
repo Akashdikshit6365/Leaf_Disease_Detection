@@ -25,3 +25,7 @@ weights (1).pth
 *.err
 uploads/
 backend/uploads/
+
+# Share packages
+LeafAI_share_package/
+LeafAI_full_project_share.zip
