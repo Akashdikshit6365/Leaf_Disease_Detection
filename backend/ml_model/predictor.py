@@ -1,4 +1,4 @@
-"""Two-stage plant disease prediction with Groq vision fallback."""
+"""Plant disease prediction helpers with Groq vision support."""
 from __future__ import annotations
 
 import base64
@@ -17,6 +17,8 @@ from PIL import Image
 from torchvision import transforms
 
 from app.core.config import settings
+from ml_model.classes import CLASS_NAMES
+from ml_model.label_utils import split_label
 from ml_model.model import build_model, load_weights
 from ml_model.spec import IMG_SIZE, NORMALIZE_MEAN, NORMALIZE_STD
 
@@ -27,6 +29,7 @@ MODEL_CONFIDENCE_THRESHOLD = 0.70
 LABELS_PATH = Path(__file__).resolve().with_name("class_labels.json")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+ALLOWED_LABELS_TEXT = "\n".join(f"- {label}" for label in CLASS_NAMES)
 
 _preprocess = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -62,12 +65,40 @@ def _split_label(label: str) -> tuple[str, str]:
     return plant, disease
 
 
+def _extract_json_object(text: str) -> dict[str, Any]:
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", cleaned)
+        if not match:
+            raise
+        payload = json.loads(match.group(0))
+
+    if not isinstance(payload, dict):
+        raise ValueError("Groq vision response JSON must be an object.")
+    return payload
+
+
+def _normalise_label(value: str) -> str | None:
+    if value in CLASS_NAMES:
+        return value
+
+    folded = re.sub(r"[\s_-]+", "", value).lower()
+    for label in CLASS_NAMES:
+        if re.sub(r"[\s_-]+", "", label).lower() == folded:
+            return label
+    return None
+
+
 # ── Groq LLM ───────────────────────────────────────────────────────────────
 
 def _call_groq_vision(image: Image.Image) -> dict[str, Any]:
     """Call Groq vision API for plant disease identification from image.
     Uses meta-llama/llama-4-scout-17b-16e-instruct for vision-based diagnosis.
-    Result is returned with source='model' to hide API usage from UI.
+    Result is returned with source='groq'.
     """
     if not settings.groq_api_key:
         raise RuntimeError("GROQ_API_KEY is not configured.")
@@ -91,10 +122,13 @@ def _call_groq_vision(image: Image.Image) -> dict[str, Any]:
             {
                 "role": "system",
                 "content": (
-                    "You are an expert plant pathologist. Analyze leaf images and identify: "
-                    "1) The plant species, 2) Any disease if present, 3) Severity level (Low/Medium/High if diseased). "
-                    "Return ONLY valid JSON in this format: "
-                    '{"plant": "Plant Name", "disease": "Disease Name or Healthy", "severity": "Low/Medium/High or N/A"}'
+                    "You are an expert plant pathologist for a leaf diagnosis app. "
+                    "Choose exactly one label from the allowed_labels list when the image appears to contain a plant leaf. "
+                    "Use visual symptoms, leaf shape, colour, and crop type to select the closest defensible allowed label. "
+                    "Use out_of_scope only when the image clearly is not a plant leaf, is unreadable, or clearly shows a crop type not covered by the allowed labels. "
+                    "Return ONLY valid JSON with this exact shape: "
+                    '{"label": "Allowed_Label_or_out_of_scope", "confidence": 0.0, "severity": "Low/Medium/High/N/A"}. '
+                    "Set confidence to your visual confidence as a number from 0.0 to 1.0."
                 ),
             },
             {
@@ -102,7 +136,11 @@ def _call_groq_vision(image: Image.Image) -> dict[str, Any]:
                 "content": [
                     {
                         "type": "text",
-                        "text": "Analyze this leaf image and identify the plant and any disease. Return only JSON.",
+                        "text": (
+                            "Analyze this image. If it is a plant leaf, select the closest allowed label only. "
+                            "Do not return out_of_scope just because the image is low confidence or imperfect.\n\n"
+                            f"allowed_labels:\n{ALLOWED_LABELS_TEXT}"
+                        ),
                     },
                     {
                         "type": "image_url",
@@ -111,7 +149,7 @@ def _call_groq_vision(image: Image.Image) -> dict[str, Any]:
                 ],
             },
         ],
-        "temperature": 0.3,
+        "temperature": 0.0,
         "max_tokens": 200,
     }
 
@@ -119,16 +157,37 @@ def _call_groq_vision(image: Image.Image) -> dict[str, Any]:
     response.raise_for_status()
     
     text = response.json()["choices"][0]["message"]["content"]
-    try:
-        payload = json.loads(text)
+    payload = _extract_json_object(text)
+    raw_label = str(payload.get("label", "")).strip()
+    if raw_label.lower() == "out_of_scope":
         return {
-            "source": "model",  # Hide API usage - appear as local model to UI
-            "plant": str(payload.get("plant", "")).strip(),
-            "disease": str(payload.get("disease", "Healthy")).strip(),
-            "severity": str(payload.get("severity", "N/A")).strip(),
+            "source": "groq",
+            "label": "out_of_scope",
+            "plant": "Unsupported plant",
+            "disease": "Uncertain Diagnosis",
+            "confidence": 0.0,
+            "severity": "N/A",
         }
-    except json.JSONDecodeError:
-        raise ValueError(f"Groq vision response was not valid JSON: {text}")
+
+    label = _normalise_label(raw_label)
+    if label is None:
+        raise ValueError(f"Groq vision returned unsupported label: {raw_label}")
+
+    plant, disease = split_label(label)
+    raw_confidence = payload.get("confidence", 0.0)
+    try:
+        confidence = max(0.0, min(1.0, float(raw_confidence)))
+    except (TypeError, ValueError):
+        confidence = 0.0
+
+    return {
+        "source": "groq",
+        "label": label,
+        "plant": plant,
+        "disease": disease,
+        "confidence": confidence,
+        "severity": str(payload.get("severity", "N/A")).strip() or "N/A",
+    }
 
 
 def _call_groq(plant: str, disease: str) -> str:
@@ -256,76 +315,36 @@ class PlantDiseasePredictor:
         }
 
     def _predict_groq(self, image: Image.Image) -> dict[str, Any]:
-        """
-        When model confidence is low → use Groq vision model
-        to identify the plant and disease from the image.
-        Result is returned with source='model' to hide API usage from UI.
-        """
+        """Use Groq vision model to identify the plant and disease."""
+        result = _call_groq_vision(image)
+        plant = result["plant"]
+        disease = result["disease"]
+
         try:
-            # Try Groq vision model (meta-llama/llama-4-scout-17b-16e-instruct)
-            result = _call_groq_vision(image)
-            plant = result["plant"]
-            disease = result["disease"]
-            
-            # Get treatment advice from Groq text model
-            try:
-                treatment = _call_groq(plant, disease)
-            except Exception as e:
-                logger.warning("Groq treatment API failed: %s — using fallback", e)
-                treatment = _fallback_advice(disease)
-            
-            result["treatment"] = treatment
-            return result
+            treatment = _call_groq(plant, disease)
         except Exception as e:
-            logger.warning("Groq vision API failed: %s — falling back to local model", e)
-            # Fallback: use local model's best guess
-            tensor    = self._preprocess(image)
-            logits    = self.model(tensor)
-            probs     = F.softmax(logits, dim=1).squeeze(0)
-            conf, idx = torch.max(probs, dim=0)
+            logger.warning("Groq treatment API failed: %s - using fallback advice", e)
+            treatment = _fallback_advice(disease)
 
-            idx            = int(idx.item())
-            confidence_pct = round(float(conf.item()) * 100, 2)
-            label          = self.labels[idx] if idx < len(self.labels) else f"Class {idx}"
-            plant, disease = _split_label(label)
-            
-            try:
-                treatment = _call_groq(plant, disease)
-            except Exception as e:
-                logger.warning("Groq treatment API failed: %s — using fallback", e)
-                treatment = _fallback_advice(disease)
-
-            return {
-                "source":     "model",  # Hidden from UI
-                "plant":      plant,
-                "disease":    disease,
-                "confidence": confidence_pct,
-                "treatment":  treatment,
-            }
+        result["treatment"] = treatment
+        return result
 
     def predict(self, image_file: Any) -> dict[str, Any]:
         image_bytes = image_file.read() if hasattr(image_file, "read") else image_file
         if not image_bytes:
             raise ValueError("Empty image file.")
 
-        image        = self._load_image(image_bytes)
-        model_result = self._predict_model(image)
+        image = self._load_image(image_bytes)
+        return self._predict_groq(image)
 
-        # High confidence → return model result directly
-        if float(model_result["confidence"]) >= MODEL_CONFIDENCE_THRESHOLD * 100:
-            # Still get treatment from Groq for high confidence results
-            plant   = model_result["plant"]
-            disease = model_result["disease"]
-            try:
-                treatment = _call_groq(plant, disease)
-            except Exception as e:
-                logger.warning("Groq API failed: %s — using fallback", e)
-                treatment = _fallback_advice(disease)
 
-            model_result["treatment"] = treatment
-            return model_result
+    def diagnose_uncertain(self, image_file: Any) -> dict[str, Any]:
+        """Force the Groq-assisted diagnosis path for uncertain images."""
+        image_bytes = image_file.read() if hasattr(image_file, "read") else image_file
+        if not image_bytes:
+            raise ValueError("Empty image file.")
 
-        # Low confidence → use Groq assisted result
+        image = self._load_image(image_bytes)
         return self._predict_groq(image)
 
 

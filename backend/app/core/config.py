@@ -15,18 +15,28 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        protected_namespaces=("settings_",),
     )
 
     # App
     app_env: str = "development"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost,"
+        "capacitor://localhost"
+    )
 
     # Groq
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"         # text-only: treatment advice
     groq_vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"  # vision: image diagnosis
+
+    # Gemini
+    gemini_api_key: str = ""
+    gemini_vision_model: str = "gemini-3.1-flash-lite"
 
     # Cloudinary
     cloudinary_url: str = ""
@@ -36,34 +46,29 @@ class Settings(BaseSettings):
     cloudinary_image_folder: str = "LeafAI/images"
     cloudinary_heatmap_folder: str = "LeafAI/heatmaps"
 
-    # MySQL
-    mysql_host: str = "127.0.0.1"
-    mysql_port: int = 3306
-    mysql_user: str = "root"
-    mysql_password: str = ""
-    mysql_database: str = "leafai"
+    # MongoDB
+    mongodb_uri: str = "mongodb://127.0.0.1:27017"
+    mongodb_database: str = "leafai"
+
+    # Auth
+    jwt_secret_key: str = "change-this-secret-before-deploying"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7
 
     # Model
     model_weights_path: str = "./ml_model/weights.pth"
-    model_confidence_threshold: float = 0.75
-    model_confidence_margin_threshold: float = 0.15
-    image_quality_min_dimension: int = 224
-    image_quality_min_brightness: float = 0.18
-    image_quality_max_brightness: float = 0.92
-    image_quality_min_blur_score: float = 40.0
-    image_quality_min_plant_coverage: float = 0.15
-    image_quality_min_center_coverage: float = 0.12
+    model_confidence_threshold: float = 0.60
+    model_confidence_margin_threshold: float = 0.05
+    image_quality_min_dimension: int = 160
+    image_quality_min_brightness: float = 0.08
+    image_quality_max_brightness: float = 0.98
+    image_quality_min_blur_score: float = 15.0
+    image_quality_min_plant_coverage: float = 0.08
+    image_quality_min_center_coverage: float = 0.03
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-
-    @property
-    def mysql_dsn(self) -> str:
-        return (
-            f"mysql+mysqlconnector://{self.mysql_user}:{self.mysql_password}"
-            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
-        )
 
     @property
     def cloudinary_url_resolved(self) -> str:

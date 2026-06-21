@@ -1,47 +1,31 @@
-"""MySQL connection and session management via SQLAlchemy."""
+"""MongoDB connection and collection setup."""
 from __future__ import annotations
 
 import logging
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from pymongo import ASCENDING, DESCENDING, MongoClient
+from pymongo.database import Database
 
 from .config import settings
 
 
 logger = logging.getLogger(__name__)
 
-
-class Base(DeclarativeBase):
-    pass
+client: MongoClient = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
 
 
-engine = create_engine(
-    settings.mysql_dsn,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    future=True,
-)
-
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-
-
-def get_db() -> Session:
-    """FastAPI dependency — yields a scoped DB session."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_database() -> Database:
+    return client[settings.mongodb_database]
 
 
 def init_db() -> None:
-    """Create tables at startup. Safe no-op if MySQL is down (logs warning)."""
-    # Import here so mappers register before create_all.
-    from app.models import prediction  # noqa: F401
-
+    """Create MongoDB indexes at startup. Safe no-op if MongoDB is unreachable."""
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("MySQL schema verified")
+        db = get_database()
+        db.command("ping")
+        db.users.create_index([("email", ASCENDING)], unique=True)
+        db.predictions.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
+        db.predictions.create_index([("user_id", ASCENDING), ("disease", ASCENDING)])
+        logger.info("MongoDB indexes verified")
     except Exception as exc:  # pragma: no cover
-        logger.warning("MySQL init skipped: %s", exc)
+        logger.warning("MongoDB init skipped: %s", exc)

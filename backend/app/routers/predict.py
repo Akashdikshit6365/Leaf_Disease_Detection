@@ -6,16 +6,13 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.core.config import settings
 from app.schemas.prediction import PredictionResponse
-from app.services import cloudinary_service, db_service, groq_service
-from app.services.heatmap_service import generate_heatmap
+from app.services.auth_service import get_current_user
+from app.services import cloudinary_service, db_service, gemini_service
 from app.services.image_quality_service import assess_image
 from app.services.model_service import model_service
-from ml_model.predictor import predictor
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +25,7 @@ MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 @router.post("/predict", response_model=PredictionResponse, status_code=status.HTTP_201_CREATED)
 async def predict(
     file: UploadFile = File(..., description="Leaf image (JPG / PNG / WEBP, <=10 MB)"),
-    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ) -> PredictionResponse:
     # ---------- validate ----------
     if file.content_type not in ALLOWED_CONTENT_TYPES:
@@ -50,27 +47,25 @@ async def predict(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid image: {exc}") from exc
 
     quality = assess_image(image)
-    if quality.retake_recommended:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            {
-                "message": "Retake the image before diagnosis.",
-                "quality_issues": quality.issues,
-                "retake_recommended": True,
-            },
-        )
+    retake_recommended = quality.retake_recommended
 
-    prediction, input_tensor = model_service.predict(image)
-    heatmap_png = generate_heatmap(image, input_tensor, prediction.class_index)
-    status_label = "confirmed"
-    retake_recommended = False
-    disease = prediction.label
-    if (
-        prediction.confidence < settings.model_confidence_threshold or
-        prediction.confidence_margin < settings.model_confidence_margin_threshold
-    ):
-        status_label = "uncertain"
-        disease = "Uncertain Diagnosis"
+    try:
+        diagnosis = gemini_service.diagnose_leaf(image)
+    except Exception as exc:
+        logger.exception("Gemini diagnosis failed")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Gemini diagnosis failed: {exc}") from exc
+
+    plant = diagnosis["plant"]
+    disease = diagnosis["disease"]
+    final_confidence = float(diagnosis["confidence"])
+    status_label = "uncertain" if diagnosis["uncertain"] else "confirmed"
+    predicted_label = f"{plant} - {disease}"
+
+    # Previous Groq vision fallback kept for reference only. Groq remains active for
+    # chat/explanation routes, but it no longer overrides image diagnosis.
+    # if is_classifier_uncertain:
+    #     fallback_result = predictor.diagnose_uncertain(raw)
+    #     ...
 
     # Re-encode uploaded image to a normalised PNG for storage consistency.
     buffer = io.BytesIO()
@@ -80,27 +75,30 @@ async def predict(
     # ---------- upload ----------
     try:
         image_url = cloudinary_service.upload_bytes(original_png, folder="images")
-        heatmap_url = cloudinary_service.upload_bytes(heatmap_png, folder="heatmaps")
+        heatmap_url = ""
     except Exception as exc:
         logger.exception("Storage upload failed")
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Storage upload failed: {exc}") from exc
 
     # ---------- persist ----------
     record = db_service.create_prediction(
-        db,
+        user_id=user["id"],
         image_url=image_url,
         heatmap_url=heatmap_url,
+        plant=plant,
         disease=disease,
-        confidence=prediction.confidence,
+        confidence=final_confidence,
+        severity=diagnosis.get("severity"),
+        visible_symptoms=diagnosis.get("visible_symptoms") or [],
+        retake_recommended=retake_recommended,
+        quality_issues=quality.issues,
+        model_version=settings.gemini_vision_model,
+        source=diagnosis.get("source") or "gemini",
     )
 
     # ---------- optional LLM explanation ----------
-    explanation: str | None = None
-    if status_label == "confirmed":
-        try:
-            explanation = groq_service.explain_disease(prediction.label)
-        except Exception as exc:  # non-fatal
-            logger.warning("Groq explanation failed: %s", exc)
+    explanation: str | None = diagnosis.get("explanation")
+    action_plan = diagnosis.get("action_plan") or {}
 
     logger.info(
         "prediction_audit %s",
@@ -109,7 +107,7 @@ async def predict(
                 "event": "prediction.completed",
                 "model_name": model_service.metadata.model_name,
                 "model_version": model_service.metadata.model_version,
-                "timestamp": record.created_at.isoformat(),
+                "timestamp": record["created_at"].isoformat(),
                 "filename": file.filename,
                 "content_type": file.content_type,
                 "image": {
@@ -123,12 +121,13 @@ async def predict(
                 },
                 "prediction": {
                     "status": status_label,
-                    "predicted_label": prediction.label,
+                    "predicted_label": predicted_label,
                     "returned_label": disease,
-                    "confidence": round(prediction.confidence, 4),
-                    "runner_up_label": prediction.second_label,
-                    "runner_up_confidence": round(prediction.second_confidence, 4),
-                    "confidence_margin": round(prediction.confidence_margin, 4),
+                    "confidence": round(final_confidence, 4),
+                    "returned_confidence": round(final_confidence, 4),
+                    "source": diagnosis.get("source"),
+                    "severity": diagnosis.get("severity"),
+                    "visible_symptoms": diagnosis.get("visible_symptoms"),
                     "retake_recommended": retake_recommended,
                 },
                 "quality_issues": quality.issues,
@@ -138,23 +137,30 @@ async def predict(
     )
 
     return PredictionResponse(
-        id=record.id,
-        disease=record.disease,
-        confidence=float(record.confidence),
-        image_url=record.image_url,
-        heatmap_url=record.heatmap_url,
+        id=record["id"],
+        plant=plant,
+        disease=record["disease"],
+        confidence=float(record["confidence"]),
+        image_url=record["image_url"],
+        heatmap_url=record["heatmap_url"],
         status=status_label,
-        predicted_label=prediction.label,
-        model_version=model_service.metadata.model_version,
+        predicted_label=predicted_label,
+        model_version=settings.gemini_vision_model,
+        severity=diagnosis.get("severity"),
+        visible_symptoms=diagnosis.get("visible_symptoms") or [],
         retake_recommended=retake_recommended,
         quality_issues=quality.issues,
-        created_at=record.created_at,
+        created_at=record["created_at"],
         explanation=explanation,
+        action_plan=action_plan,
     )
 
 
 @router.post("/scan/")
-async def scan_plant(file: UploadFile = File(..., description="Leaf image for 2-stage diagnosis")) -> dict:
+async def scan_plant(
+    file: UploadFile = File(..., description="Leaf image for 2-stage diagnosis"),
+    _: dict = Depends(get_current_user),
+) -> dict:
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -168,7 +174,8 @@ async def scan_plant(file: UploadFile = File(..., description="Leaf image for 2-
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image exceeds 10 MB.")
 
     try:
-        return predictor.predict(raw)
+        image = model_service.load_image(raw)
+        return gemini_service.diagnose_leaf(image)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     except Exception as exc:

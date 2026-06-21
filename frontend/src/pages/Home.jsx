@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import FeatureIcon from '../components/FeatureIcon.jsx'
 import HeroMockup from '../components/HeroMockup.jsx'
+import { imageAssets } from '../assets/imageAssets.js'
 
 const FEATURES = [
   {
@@ -32,44 +33,55 @@ const NOTES = [
 ]
 
 const METRICS = [
-  { value: 'Focused', label: 'workflow from scan to action' },
-  { value: 'Visual', label: 'evidence built into the result' },
-  { value: 'Useful', label: 'guidance instead of raw output' },
+  { value: 'Fast', label: 'scan to recommendation' },
+  { value: 'Clear', label: 'evidence-led result' },
+  { value: 'Guided', label: 'care steps included' },
 ]
 
 export default function Home() {
   return (
-    <div className="space-y-20 md:space-y-28">
-      <section className="relative pt-4 md:pt-10">
-        <div className="grid items-start gap-8 xl:grid-cols-[1.02fr_0.98fr]">
-          <div className="panel-hero surface-mist p-5 sm:p-7 md:p-10 xl:p-12 reveal-up">
+    <div className="premium-shell space-y-14 md:space-y-24">
+      <section className="relative pt-2 md:pt-8">
+        <div className="absolute inset-x-0 top-10 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+        <div className="grid items-start gap-6 xl:grid-cols-[0.94fr_1.06fr]">
+          <div className="enterprise-shell mobile-depth-card p-5 sm:p-7 md:p-10 xl:p-12 reveal-up">
+            <div className="kinetic-band" />
+            <img
+              src={imageAssets.greenhouse}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-32 saturate-110"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/96 via-black/88 to-black/76" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/72" />
             <div className="ambient-frame" />
-            <div className="noise opacity-12" />
-            <div className="orb orb-neon -left-16 -top-16 h-48 w-48 opacity-30" />
-            <div className="orb orb-sky -right-12 -bottom-12 h-56 w-56 opacity-25" />
+            <div className="enterprise-grid absolute inset-0 opacity-25" />
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
 
-            <div className="relative space-y-8">
-              <div>
-                <span className="luxury-kicker">
+            <div className="relative space-y-7">
+              <div className="space-y-5">
+                <div className="glass-strip inline-flex max-w-full items-center gap-3 px-3 py-2">
                   <span className="eyebrow-dot" />
-                  Advanced plant diagnostics
-                </span>
-                <h1 className="headline-luxe mt-6 text-5xl font-semibold leading-[0.95] heading-gradient sm:text-6xl md:mt-8 md:text-7xl xl:text-8xl">
-                  Premium crop intelligence, without the visual clutter.
+                  <span className="text-[10px] uppercase tracking-[0.24em] text-white/55">Plant diagnostic workspace</span>
+                  <span className="h-4 w-px bg-white/10" />
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-neon/80">Mobile ready</span>
+                </div>
+                <h1 className="headline-luxe max-w-3xl text-[38px] font-semibold heading-gradient drop-shadow-[0_8px_28px_rgba(0,0,0,0.82)] sm:text-5xl md:text-6xl xl:text-[64px]">
+                  Diagnose leaf disease with a cleaner decision flow.
                 </h1>
-                <p className="mt-6 max-w-2xl text-base leading-8 text-white/66 md:text-lg md:leading-9 xl:text-xl">
-                  LeafAI turns a simple leaf photo into a clear diagnosis, visual evidence, and practical care guidance through one calm, intentional experience.
+                <p className="max-w-2xl text-[15px] font-medium leading-7 text-white/78 drop-shadow-[0_4px_18px_rgba(0,0,0,0.86)] md:text-base md:leading-8">
+                  Capture a leaf, review the finding with visual evidence, then move directly into practical care guidance. Built for phone-first field use.
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3 pt-2 md:gap-4 md:pt-4">
-                <Link to="/scan" className="btn-primary text-base font-semibold">
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap">
+                <Link to="/scan" className="btn-primary w-full text-sm font-semibold sm:w-auto sm:text-base">
                   Start scanning
                   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" strokeWidth="2.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </Link>
-                <Link to="/history" className="btn-ghost text-base font-medium">
+                <Link to="/history" className="btn-ghost w-full text-sm font-medium sm:w-auto sm:text-base">
                   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" strokeWidth="2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
@@ -80,20 +92,20 @@ export default function Home() {
 
               <div className="divider-neon" />
 
-              <div className="grid gap-5 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {METRICS.map((item) => (
-                  <div key={item.value} className="space-y-2">
-                    <p className="text-2xl font-semibold text-white md:text-3xl">{item.value}</p>
-                    <p className="max-w-[18ch] text-sm leading-6 text-white/48">{item.label}</p>
+                  <div key={item.value} className="metric-strip">
+                    <p className="text-xl font-semibold text-white md:text-2xl">{item.value}</p>
+                    <p className="mt-1 text-xs leading-5 text-white/48">{item.label}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="grid gap-4 border-t border-white/8 pt-6 md:grid-cols-[0.95fr_1.05fr] md:pt-8">
+              <div className="grid gap-4 border-t border-white/8 pt-5 md:grid-cols-[0.95fr_1.05fr]">
                 <div>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">Why it feels different</p>
-                  <p className="mt-3 text-base font-semibold text-white sm:text-lg">
-                    The product keeps the important actions visible and lets the diagnosis story unfold in a more deliberate way.
+                  <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/40">Workflow</p>
+                  <p className="mt-3 text-base font-semibold text-white">
+                    One visual path from image capture to next action.
                   </p>
                 </div>
 
@@ -113,26 +125,26 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid gap-8 xl:grid-cols-[0.88fr_1.12fr] xl:items-start">
+      <section className="grid gap-7 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
         <div className="space-y-8">
           <div className="max-w-xl">
             <span className="luxury-kicker">
               <span className="eyebrow-dot" />
               Why LeafAI
             </span>
-            <h2 className="mt-6 text-4xl font-semibold heading-gradient md:text-5xl xl:text-6xl">
-              A more editorial layout, not a wall of cards.
+            <h2 className="mt-5 text-3xl font-semibold heading-gradient md:text-5xl">
+              Designed for field decisions, not dashboard noise.
             </h2>
-            <p className="mt-6 text-base leading-8 text-white/62 md:text-lg">
-              Premium interfaces feel composed. Instead of boxing every thought into another panel, the layout should breathe, guide the eye, and give the most important moments more room.
+            <p className="mt-5 text-base leading-8 text-white/62">
+              The interface keeps capture, evidence, guidance, and history close together while avoiding repeated panels that slow users down on mobile.
             </p>
           </div>
 
           <div className="space-y-4 border-l border-white/10 pl-5 md:pl-7">
             {[
-              'Large hero presence that sets the tone',
-              'Quieter supporting details with less framing',
-              'Fewer containers, stronger hierarchy',
+              'Large hero presence that sets the tone.',
+              'Spatial depth and controlled glow instead of random gradients.',
+              'Fewer containers, stronger hierarchy, better motion rhythm.',
             ].map((point) => (
               <div key={point} className="text-sm leading-7 text-white/58">
                 {point}
@@ -141,7 +153,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="panel-luxe overflow-hidden p-0">
+        <div className="enterprise-shell mobile-depth-card overflow-hidden p-0">
+          <div className="kinetic-band" />
+          <img
+            src={imageAssets.fieldCare}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-14"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/72" />
           <div className="ambient-frame" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(57,255,136,0.08),transparent_32%)] opacity-90" />
 
@@ -173,7 +193,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="panel-hero relative overflow-hidden p-6 sm:p-8 md:p-10 xl:p-12">
+      <section className="panel-orbit relative overflow-hidden p-6 sm:p-8 md:p-10 xl:p-12">
         <div className="ambient-frame" />
         <div className="absolute inset-0 spot-grid opacity-10" />
         <div className="absolute -right-24 -top-24 h-96 w-96 orb orb-neon opacity-25" />
@@ -206,7 +226,7 @@ export default function Home() {
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" strokeWidth="2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                Ask AI assistant
+                Ask assistant
               </Link>
             </div>
           </div>

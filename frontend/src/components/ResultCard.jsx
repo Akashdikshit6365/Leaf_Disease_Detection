@@ -13,6 +13,7 @@ export default function ResultCard({
   confidence,
   severity,
   treatment,
+  visibleSymptoms = [],
   createdAt,
 }) {
   const normalizedConfidence = confidence == null ? null : confidence > 1 ? confidence / 100 : confidence
@@ -26,17 +27,17 @@ export default function ResultCard({
   const dash = circumference * (1 - ((pct || 0) / 100))
 
   return (
-    <div className="panel-luxe p-8 md:p-10 reveal-fade">
+    <div className="enterprise-shell mobile-depth-card p-5 md:p-8 reveal-fade">
+      <div className="kinetic-band" />
       <div className="ambient-frame" />
-      <div className="absolute inset-0 dot-bg opacity-15" />
-      <div className="absolute -right-12 -top-16 h-64 w-64 orb orb-neon opacity-30" />
+      <div className="enterprise-grid absolute inset-0 opacity-20" />
 
-      <div className="relative space-y-8">
+      <div className="relative space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="flex-1">
             <span className="luxury-kicker">
               <span className="eyebrow-dot" />
-              Clinical finding
+              Diagnosis finding
             </span>
             {plant && <p className="mt-4 text-xs font-mono uppercase tracking-[0.28em] text-white/40">{plant}</p>}
             <h2 className={`mt-4 text-4xl font-semibold tracking-tight md:text-5xl leading-tight ${isHealthy ? 'text-neon' : 'text-gradient-soft'}`}>
@@ -71,12 +72,12 @@ export default function ResultCard({
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[240px_1fr]">
-          <div className="surface-card rounded-[28px] p-7 flex flex-col">
+        <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+          <div className="surface-card mobile-depth-card rounded-[16px] p-5 md:p-6 flex flex-col">
             {pct != null ? (
               <>
                 <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/42">Confidence level</p>
-                <div className="relative mt-7 flex-1 flex items-center justify-center">
+                <div className="relative mt-5 flex-1 flex items-center justify-center">
                   <svg viewBox="0 0 120 120" className="rotate-[-90deg] w-full max-w-[160px]">
                     <circle cx="60" cy="60" r={ringRadius} stroke="rgba(255,255,255,0.08)" strokeWidth="9" fill="none" />
                     <circle
@@ -110,7 +111,7 @@ export default function ResultCard({
             )}
           </div>
 
-          <div className="surface-card rounded-[28px] p-7">
+          <div className="surface-card mobile-depth-card rounded-[16px] p-5 md:p-6">
             <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/42 mb-5">Diagnosis details</p>
 
             {pct != null ? (
@@ -130,7 +131,7 @@ export default function ResultCard({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <InfoTile label="Condition" value={isHealthy ? 'Healthy' : disease || 'Unknown'} icon="check" />
-                  <InfoTile label="Accuracy" value={`${pct}%`} icon="target" />
+                  <InfoTile label="Confidence" value={`${pct}%`} icon="target" />
                   {createdAt && (
                     <InfoTile 
                       label="Scanned" 
@@ -158,9 +159,22 @@ export default function ResultCard({
             )}
 
             {isUncertain && (
-              <div className="mt-6 rounded-[20px] border border-amber-500/25 bg-amber-500/8 px-5 py-4 text-sm leading-6 text-amber-100">
+              <div className="mt-6 rounded-lg border border-amber-500/25 bg-amber-500/8 px-5 py-4 text-sm leading-6 text-amber-100">
                 <p className="font-semibold mb-1">Clarification needed</p>
                 <p className="text-amber-50/80">Please capture a clearer image with better lighting and one leaf prominently featured for accurate diagnosis.</p>
+              </div>
+            )}
+
+            {visibleSymptoms.length > 0 && (
+              <div className="mt-6 rounded-lg border border-white/10 bg-black/18 px-5 py-4">
+                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/42">Visible symptoms</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {visibleSymptoms.slice(0, 4).map((symptom) => (
+                    <span key={symptom} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/72">
+                      {symptom}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -172,7 +186,7 @@ export default function ResultCard({
 
 function InfoTile({ label, value, icon }) {
   return (
-    <div className="surface-card rounded-[18px] px-4 py-4 hover:border-white/15 hover:bg-white/[0.04] transition-all">
+    <div className="surface-card rounded-lg px-4 py-4 hover:border-white/15 hover:bg-white/[0.04] transition-all">
       <p className="text-[9px] font-mono uppercase tracking-[0.26em] text-white/40">{label}</p>
       <p className="mt-3 text-sm font-semibold text-white/88 line-clamp-2">{value}</p>
     </div>

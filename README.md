@@ -115,7 +115,8 @@ All secrets live in `backend/.env`. See [.env.example](.env.example) — require
 
 ```env
 GROQ_API_KEY=...
-GROQ_MODEL=llama3-8b-8192
+GROQ_MODEL=llama-3.1-8b-instant
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
 CLOUDINARY_IMAGE_FOLDER=LeafAI/images
 CLOUDINARY_HEATMAP_FOLDER=LeafAI/heatmaps

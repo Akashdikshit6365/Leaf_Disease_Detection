@@ -22,6 +22,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1)
     disease: str | None = None
+    diagnosis_context: dict | None = None
 
 
 class ChatResponse(BaseModel):

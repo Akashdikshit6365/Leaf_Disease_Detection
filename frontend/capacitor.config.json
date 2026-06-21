@@ -1,0 +1,15 @@
+{
+  "appId": "com.akashapp.mobile",
+  "appName": "LeafAI",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "http",
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

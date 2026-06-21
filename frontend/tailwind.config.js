@@ -13,6 +13,11 @@ export default {
           rose:   '#fb7185',
         },
       },
+      opacity: {
+        14: '0.14',
+        16: '0.16',
+        32: '0.32',
+      },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],

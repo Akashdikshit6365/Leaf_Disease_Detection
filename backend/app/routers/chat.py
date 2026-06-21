@@ -29,7 +29,7 @@ def ask_ai(payload: AskAIRequest) -> AskAIResponse:
 @router.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest) -> ChatResponse:
     try:
-        answer = groq_service.chat(payload.messages, payload.disease)
+        answer = groq_service.chat(payload.messages, payload.disease, payload.diagnosis_context)
     except RuntimeError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     except Exception as exc:
